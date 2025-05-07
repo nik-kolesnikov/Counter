@@ -1,22 +1,27 @@
 package com.example.counter
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
-    private var buttonPlus: Button? = null
-    private var buttonClearData: Button? = null
-    private var textCount: TextView? = null
-    var count: Int = 0
+    private lateinit var buttonPlus: Button
+    private lateinit var buttonClearCount: Button
+    private lateinit var buttonClearRecord: Button
+    private lateinit var textCount: TextView
+    private lateinit var textRecord: TextView
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putInt("count", count)
-        textCount!!.text = count.toString()
+    private var count: Int = 0
+    private var record: Int? = 0
+
+    private val sharedPref: SharedPreferences by lazy {
+        baseContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,28 +29,59 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         textCount = findViewById(R.id.textView3)
+        textRecord = findViewById(R.id.recordTextView)
         buttonPlus = findViewById(R.id.buttonPlus)
-        buttonClearData = findViewById(R.id.buttonClearData)
+        buttonClearCount = findViewById(R.id.buttonClearCount)
+        buttonClearRecord = findViewById(R.id.buttonClearRecord)
+
+        record = sharedPref.getInt(RECORD_PREF_NAME, 0)
+        textRecord.text = record.toString()
+
+        buttonPlus.setOnClickListener { onClickButtonPlus() }
+        buttonClearCount.setOnClickListener { onClickButtonClearCount() }
+        buttonClearRecord.setOnClickListener { onClickButtonClearRecord() }
     }
 
-    fun onClickButtonPlus(view: View?) {
+    fun onClickButtonPlus() {
         count++
-        textCount!!.text = count.toString()
-    }
+        textCount.text = count.toString()
 
-    fun onClickButtonClearData(view: View?) {
-        count = 0
-        textCount!!.text = count.toString()
-
-        if (count == 0) {
-            val toast = Toast.makeText(applicationContext, "Data Cleaned", Toast.LENGTH_SHORT)
-            toast.show()
+        if (count > record!!) {
+            record = count
+            textRecord.text = record.toString()
+            sharedPref.edit().putInt(RECORD_PREF_NAME, record!!).apply()
         }
     }
 
-    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
-        super.onRestoreInstanceState(savedInstanceState)
-        count = savedInstanceState.getInt("count")
-        textCount!!.text = count.toString()
+    fun onClickButtonClearCount() {
+        if (count == 0) {
+            Toast.makeText(applicationContext, "Пока нечего очищать - продолжайте наживать!", Toast.LENGTH_SHORT).show()
+        } else {
+            count = 0
+            textCount.text = count.toString()
+            Toast.makeText(applicationContext, "Очистили, начинаем заново!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun onClickButtonClearRecord() {
+        val builder = AlertDialog.Builder(this)
+        builder
+            .setTitle("Сбросить рекорд?")
+            .setMessage("Вы уверены, что хотите сбросить рекорд?")
+            .setPositiveButton("Да") { _, _ ->
+                record = 0
+                textRecord.text = record.toString()
+                sharedPref.edit().remove(RECORD_PREF_NAME).apply()
+            }
+            .setNegativeButton("Нет") { _, _ -> }
+
+        val dialog = builder.create()
+        dialog.show()
+    }
+
+    companion object {
+        private const val PREFS_NAME = "CounterPrefs"
+        private const val RECORD_PREF_NAME = "counter_record"
     }
 }
+
